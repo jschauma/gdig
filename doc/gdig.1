@@ -1,0 +1,146 @@
+.\" Originally written by Jan Schaumann
+.\" <jschauma@netmeister.org> in May 2020.
+.Dd May 28, 2020
+.Dt gdig 1
+.Os
+.Sh NAME
+.Nm gdig 
+.Nd get a DNS response for the given geo location
+.Sh SYNOPSIS
+.Nm
+.Op Fl 46Vhv
+.Ar country
+.Ar query
+.Op Ar dig-args
+.Sh DESCRIPTION
+The
+.Nm
+tool lets you perform a
+.Xr dig 1
+lookup as if you were coming from the given
+geographical location.
+It does this by determining a suitable CIDR subnet via
+the
+.Xr gip 1
+utility and then passing this via the EDNS Client Subnet
+option '+subnet' argument on to
+.Xr dig 1 .
+In order to increase the odds that the ECS is not
+ignored by any resolvers,
+.Nm
+will query the authoritative name server for the given
+query directly.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width __
+.It Fl 4
+Only use IPv4 ECS cidrs.
+.It Fl 6
+Only use IPv6 ECS cidrs.
+.It Fl V
+Print version number and exit.
+.It Fl h
+Display help and exit.
+.It Fl v
+Be verbose.
+Can be specified multiple times.
+.El
+.Sh ARGUMENTS
+The first required argument to
+.Nm
+will be passed on to
+.Xr gip 1
+to determine the ECS CIDR to use.
+.Pp
+The second required argument is the domain name to
+look up and which will determine the authoritative
+nameserver to query.
+This argument will be passed on to
+.Xr dig 1 .
+.Pp
+Any additional arguments will be passed on to
+.Xr dig 1
+as well, allowing the user to specify any other
+options, if desired.
+.Sh DETAILS
+.Nm
+takes as the first argument a
+.Ar country ,
+which it will pass on to the
+.Xr gip 1
+utility to determine a suitable CIDR subnet.
+This subnet will then subsequently used as the EDNS
+Client Subnet option as passed to
+.Xr dig 1
+for the full query provided as subsequent arguments.
+.Pp
+Note: if the special argument 'none' is supplied as
+the
+.Ar country ,
+then
+.Nm
+will disable ECS by setting it explicitly to
+\'0.0.0.0/0'.
+.Pp
+The part where
+.Nm
+provides additional meaningful help is in that it will
+attempt to identify the authoritative nameservers for
+the given lookup and query those nameservers directly.
+.Pp
+In the process,
+.Nm
+will first resolve any CNAMEs and then begin
+identifying the responsible NS record from the
+left-most side of the name.
+.Pp
+For example, to determine what the IPv4 address would
+be that Wikipedia's NS servers would return if you
+queried them from Japan, you might try to execute the
+following commands:
+.Bd -literal -offset indent
+host -t cname www.wikipedia.org
+host -t ns dyna.wikimedia.org.
+host -t ns wikimedia.org.
+gip -c japan
+dig +subnet=185.102.64.0/22 @ns1.wikimedia.org dyna.wikimedia.org
+.Ed
+.Pp
+.Nm
+will perform roughly those steps.
+.Sh EXAMPLES
+The most common usage would likely look as follows:
+.Pp
+To send a query for 'www.wikipedia.org' as if coming
+from Japan:
+.Bd -literal -offset indent
+gdig japan www.wikipedia.org
+.Ed
+.Pp
+To send a query for IPv6 addresses for 'www.yahoo.com'
+as if coming from Germany:
+.Bd -literal -offset indent
+gdig germany www.yahoo.com -t AAAA +short
+.Ed
+.Pp
+To send a query for A records of 'google.com' as if coming
+from the sa-east-1 region in AWS:
+.Bd -literal -offset indent
+gdig sa-east-1 google.com -t A +short
+.Ed
+.Sh EXIT STATUS
+.Ex -std 
+.Sh SEE ALSO
+.Xr dig 1 ,
+.Xr gip 1
+.Pp
+RFC7871
+.Sh HISTORY
+.Nm
+was originally written by
+.An Jan Schaumann
+.Aq jschauma@netmeister.org
+in May 2020.
+.Sh BUGS
+Please file bugs and feature requests by emailing the author.
